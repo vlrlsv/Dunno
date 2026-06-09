@@ -1,17 +1,15 @@
-//
-//  DunnoApp.swift
-//  Dunno
-//
-//  Created by Anton E. on 4/16/26.
-//
-
 import SwiftUI
+import SwiftData
 
 @main
 struct DunnoApp: App {
+    @State private var appState = AppState()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootContentView()
+                .environment(appState)
         }
+        .modelContainer(for: TaskItem.self)
     }
 }

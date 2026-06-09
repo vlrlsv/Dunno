@@ -34,10 +34,8 @@ struct TaskListView: View {
                 }
                 
                 if !tasks.isEmpty {
-                    Button(action: {
-                        appState.isRandomizing = true
-                    }) {
-                        Text("Pick a Random Task")
+                    Button(action: pickRandomTask) {
+                        Text(tasks.count == 1 ? "Start Task" : "Pick a Random Task")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -57,6 +55,15 @@ struct TaskListView: View {
         }
     }
     
+    private func pickRandomTask() {
+        // With a single task there's nothing to randomize — go straight to it.
+        if tasks.count == 1, let only = tasks.first {
+            appState.setActiveTask(only)
+        } else {
+            appState.isRandomizing = true
+        }
+    }
+
     private func addTask() {
         let title = newTaskTitle.trimmingCharacters(in: .whitespaces)
         guard !title.isEmpty, tasks.count < 8 else { return }

@@ -7,8 +7,6 @@ struct TaskListView: View {
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }, sort: \TaskItem.creationDate) private var tasks: [TaskItem]
 
     @State private var newTaskTitle: String = ""
-    @State private var showingRandomizer = false
-    @State private var pendingTask: TaskItem? = nil
     
     var body: some View {
         NavigationStack {
@@ -36,7 +34,7 @@ struct TaskListView: View {
                 
                 if !tasks.isEmpty {
                     Button(action: {
-                        showingRandomizer = true
+                        appState.isRandomizing = true
                     }) {
                         Text("Pick a Random Task")
                             .font(.headline)
@@ -50,16 +48,6 @@ struct TaskListView: View {
                 }
             }
             .navigationTitle("My Tasks (\(tasks.count)/8)")
-            .fullScreenCover(isPresented: $showingRandomizer, onDismiss: {
-                if let task = pendingTask {
-                    appState.setActiveTask(task)
-                    pendingTask = nil
-                }
-            }) {
-                RandomizerView(tasks: tasks, onTaskSelected: { task in
-                    pendingTask = task
-                })
-            }
         }
     }
     

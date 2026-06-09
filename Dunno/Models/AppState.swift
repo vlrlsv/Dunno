@@ -19,6 +19,9 @@ final class AppState {
             }
         }
     }
+
+    // Transient: drives the randomizer full-screen cover, presented at the root.
+    var isRandomizing: Bool = false
     
     init() {
         self.hasSeenTutorial = UserDefaults.standard.bool(forKey: "hasSeenTutorial")

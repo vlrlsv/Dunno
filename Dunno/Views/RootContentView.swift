@@ -6,6 +6,7 @@ struct RootContentView: View {
     @Query private var tasks: [TaskItem]
     
     var body: some View {
+        @Bindable var appState = appState
         Group {
             if !appState.hasSeenTutorial {
                 WelcomeView()
@@ -14,6 +15,11 @@ struct RootContentView: View {
             } else {
                 MainTabView()
             }
+        }
+        // Presented here, above the MainTabView/ActiveTaskView swap, so the cover
+        // is never orphaned and dismisses directly onto the picked ActiveTaskView.
+        .fullScreenCover(isPresented: $appState.isRandomizing) {
+            RandomizerView(tasks: tasks.filter { !$0.isCompleted })
         }
         .onAppear {
             validateActiveTask()

@@ -7,11 +7,13 @@ final class TaskItem {
     var title: String
     var isCompleted: Bool
     var creationDate: Date
-    
-    init(title: String) {
+    var sortOrder: Int
+
+    init(title: String, sortOrder: Int = 0) {
         self.id = UUID()
         self.title = title
         self.isCompleted = false
         self.creationDate = Date()
+        self.sortOrder = sortOrder
     }
 }

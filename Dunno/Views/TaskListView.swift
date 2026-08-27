@@ -7,7 +7,8 @@ struct TaskListView: View {
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }, sort: \TaskItem.sortOrder) private var tasks: [TaskItem]
 
     @State private var newTaskTitle: String = ""
-    
+    @State private var saveErrorMessage: String?
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -52,6 +53,18 @@ struct TaskListView: View {
                     EditButton()
                 }
             }
+            .alert(
+                "Couldn't Save Task",
+                isPresented: Binding(
+                    get: { saveErrorMessage != nil },
+                    set: { if !$0 { saveErrorMessage = nil } }
+                ),
+                presenting: saveErrorMessage
+            ) { _ in
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: { message in
+                Text(message)
+            }
         }
     }
     
@@ -70,7 +83,18 @@ struct TaskListView: View {
         let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
         let newTask = TaskItem(title: title, sortOrder: nextOrder)
         modelContext.insert(newTask)
-        newTaskTitle = ""
+        do {
+            // Save explicitly rather than trusting autosave, so a rejected write
+            // surfaces here instead of being silently swallowed by the store.
+            try modelContext.save()
+            newTaskTitle = ""
+        } catch {
+            // Roll back the failed insert and keep the typed title so the user
+            // doesn't lose it, then tell them what went wrong.
+            modelContext.rollback()
+            saveErrorMessage = error.localizedDescription
+            print("Failed to save new task: \(error)")
+        }
     }
 
     private func moveTasks(from source: IndexSet, to destination: Int) {

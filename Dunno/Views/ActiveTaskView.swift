@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ActiveTaskView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
     
     let task: TaskItem

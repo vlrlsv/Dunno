@@ -82,16 +82,13 @@ struct TaskListView: View {
         guard !title.isEmpty, tasks.count < 8 else { return }
         let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
         let newTask = TaskItem(title: title, sortOrder: nextOrder)
-        modelContext.insert(newTask)
         do {
             // Save explicitly rather than trusting autosave, so a rejected write
             // surfaces here instead of being silently swallowed by the store.
-            try modelContext.save()
+            try TaskStore.insert(newTask, into: modelContext)
             newTaskTitle = ""
         } catch {
-            // Roll back the failed insert and keep the typed title so the user
-            // doesn't lose it, then tell them what went wrong.
-            modelContext.rollback()
+            // Keep the typed title for retry and report the failed write.
             saveErrorMessage = error.localizedDescription
             print("Failed to save new task: \(error)")
         }

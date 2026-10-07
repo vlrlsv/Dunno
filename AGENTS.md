@@ -43,6 +43,8 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **Task list editing:** Rows are inline-editable (`TaskRow` wraps a `@Bindable` `TextField`); because `TaskItem` is a `@Model`, title edits persist automatically. Clearing a title and committing (losing focus) deletes the task. Rows are reorderable via `onMove`, which renumbers every task's `sortOrder` to match the new order.
 
+**Adding tasks:** `TaskStore.insert` explicitly saves the shared context. On failure it removes only the new task, preserving other pending changes. The view retains the typed title and displays the save error. Do not use a context-wide rollback for a failed addition.
+
 **Randomizer flow:** The randomizer is presented from `RootContentView` as a `.fullScreenCover` bound to `appState.isRandomizing`, so it sits above the `MainTabView`/`ActiveTaskView` swap and dismisses cleanly onto the picked `ActiveTaskView`. `RandomizerView` receives a snapshot of the incomplete tasks and animates a decelerating slot-machine wheel: it builds a 16-cycle reel, picks a random winner, and scrolls to it with a single `timingCurve` animation (~2.8s). On completion it holds ~1s, then calls `appState.setActiveTask(_:)` and clears `isRandomizing`. `TaskListView.pickRandomTask()` short-circuits the wheel when there is only one task — it calls `setActiveTask(_:)` directly, and the button reads "Start Task" instead of "Pick a Random Task."
 
 ## Key Conventions

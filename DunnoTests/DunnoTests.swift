@@ -5,6 +5,63 @@ import Testing
 
 @MainActor
 struct DunnoTests {
+    private enum SaveFailure: Error { case rejected }
+
+    @Test func failedAdditionPreservesOtherPendingChanges() throws {
+        let container = try ModelContainer(
+            for: TaskItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let edited = TaskItem(title: "Original", sortOrder: 0)
+        let moved = TaskItem(title: "Moved", sortOrder: 1)
+        let deleted = TaskItem(title: "Deleted", sortOrder: 2)
+        for task in [edited, moved, deleted] { context.insert(task) }
+        try context.save()
+
+        edited.title = "Edited"
+        edited.isCompleted = true
+        edited.sortOrder = 1
+        moved.sortOrder = 0
+        context.delete(deleted)
+        let added = TaskItem(title: "Rejected", sortOrder: 2)
+
+        do {
+            try TaskStore.insert(added, into: context) { savingContext in
+                #expect(savingContext === context)
+                #expect(savingContext.insertedModelsArray.contains { ($0 as? TaskItem)?.id == added.id })
+                throw SaveFailure.rejected
+            }
+            Issue.record("Expected the failed save to propagate")
+        } catch SaveFailure.rejected {
+            // The view can report the original error and retain the input.
+        }
+
+        // Saving the surviving changes must not resurrect the failed addition
+        // or undo the user's earlier edits, move, completion, or deletion.
+        try context.save()
+        let reader = ModelContext(container)
+        let saved = try reader.fetch(FetchDescriptor<TaskItem>(sortBy: [SortDescriptor(\TaskItem.sortOrder)]))
+        #expect(saved.map(\.id) == [moved.id, edited.id])
+        #expect(saved.last?.title == "Edited")
+        #expect(saved.last?.isCompleted == true)
+        #expect(saved.last?.sortOrder == 1)
+    }
+
+    @Test func successfulAdditionSavesTheNewTask() throws {
+        let container = try ModelContainer(
+            for: TaskItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let task = TaskItem(title: "New task", sortOrder: 4)
+        try TaskStore.insert(task, into: ModelContext(container))
+        let saved = try ModelContext(container).fetch(FetchDescriptor<TaskItem>())
+        #expect(saved.map(\.id) == [task.id])
+        #expect(saved.first?.title == "New task")
+        #expect(saved.first?.sortOrder == 4)
+    }
+
     private func withDefaults(_ test: (UserDefaults) throws -> Void) rethrows {
         let name = "DunnoTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

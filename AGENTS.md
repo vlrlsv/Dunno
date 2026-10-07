@@ -12,14 +12,18 @@ All building and testing is done through Xcode or `xcodebuild`:
 
 ```bash
 # Build
-xcodebuild -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' build
 
 # Run unit tests (Swift Testing framework)
-xcodebuild test -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:DunnoTests
+xcodebuild test -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' -only-testing:DunnoTests
 
 # Run UI tests
-xcodebuild test -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:DunnoUITests
+xcodebuild test -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' -only-testing:DunnoUITests
 ```
+
+Use an installed simulator runtime. If `xcode-select` points to CommandLineTools, prefix commands with `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`.
+
+Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData store. UI tests set `DUNNO_UI_TEST_ID` to a fresh UUID per test; Debug builds use that ID for separate defaults and a separate disk store, preserving state across relaunches within the test. Release builds ignore this environment variable.
 
 ## Architecture
 
@@ -44,5 +48,5 @@ xcodebuild test -scheme Dunno -destination 'platform=iOS Simulator,name=iPhone 1
 ## Key Conventions
 
 - Views inject `AppState` via `@Environment(AppState.self)` — it must be passed with `.environment(appState)` from the root.
-- `modelContainer(for: TaskItem.self)` is set once at the `WindowGroup` level; never create additional containers.
+- The app creates one `ModelContainer` for `TaskItem` and attaches it at the `WindowGroup` level; views must use that container.
 - Unit tests use Swift Testing (`@Test`, `#expect`); UI tests use XCTest.

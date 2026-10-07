@@ -1,43 +1,107 @@
-//
-//  DunnoUITests.swift
-//  DunnoUITests
-//
-//  Created by Anton E. on 4/16/26.
-//
-
 import XCTest
 
+@MainActor
 final class DunnoUITests: XCTestCase {
+    private var app: XCUIApplication!
 
     override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
+        app = XCUIApplication()
+        app.launchEnvironment["DUNNO_UI_TEST_ID"] = UUID().uuidString
+        app.launch()
     }
 
     override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
+        app.terminate()
+        app = nil
     }
 
-    @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
+    private func finishOnboarding() {
+        let start = app.buttons["Get Started"]
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        start.tap()
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
+    }
+
+    private func addTask(_ title: String) {
+        let field = app.textFields["New task..."]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText(title + "\n")
+        XCTAssertTrue(app.textFields.matching(NSPredicate(format: "value == %@", title)).firstMatch.waitForExistence(timeout: 5))
+    }
+
+    func testOnboardingAndTasksSurviveRelaunch() {
+        finishOnboarding()
+        addTask("Read a chapter")
+        app.terminate()
         app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
+        XCTAssertTrue(app.navigationBars["My Tasks (1/8)"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Get Started"].exists)
+        XCTAssertEqual(app.textFields["Task"].value as? String, "Read a chapter")
     }
 
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
-        }
+    func testSingleTaskRestoresActiveStateAndSupportsCancelAndComplete() {
+        finishOnboarding()
+        addTask("Read a chapter")
+        app.buttons["Start Task"].tap()
+        XCTAssertTrue(app.buttons["Mark Complete"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Read a chapter"].exists)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.buttons["Mark Complete"].waitForExistence(timeout: 5))
+        app.buttons["Cancel & Pick Another Later"].tap()
+        XCTAssertTrue(app.buttons["Start Task"].waitForExistence(timeout: 5))
+        app.buttons["Start Task"].tap()
+        app.buttons["Mark Complete"].tap()
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Start Task"].exists)
+    }
+
+    func testTaskLimitAndBlankInput() {
+        finishOnboarding()
+        let field = app.textFields["New task..."]
+        field.tap()
+        field.typeText("   \n")
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].exists)
+        field.tap()
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
+        for index in 1...8 { addTask("Task \(index)") }
+        XCTAssertTrue(app.navigationBars["My Tasks (8/8)"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["New task..."].exists)
+        app.buttons["Pick a Random Task"].tap()
+        XCTAssertTrue(app.buttons["Mark Complete"].waitForExistence(timeout: 10))
+        app.buttons["Mark Complete"].tap()
+        XCTAssertTrue(app.navigationBars["My Tasks (7/8)"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["New task..."].exists)
+    }
+
+    func testRandomizerChoosesAnExistingTask() {
+        finishOnboarding()
+        addTask("Read")
+        addTask("Walk")
+        app.buttons["Pick a Random Task"].tap()
+        XCTAssertTrue(app.buttons["Mark Complete"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Read"].exists || app.staticTexts["Walk"].exists)
+        app.buttons["Cancel & Pick Another Later"].tap()
+        XCTAssertTrue(app.navigationBars["My Tasks (2/8)"].waitForExistence(timeout: 5))
+    }
+
+    func testEditingAndDeletingTasks() {
+        finishOnboarding()
+        addTask("Read")
+        let row = app.textFields["Task"]
+        row.tap()
+        row.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "Walk")
+        app.textFields["New task..."].tap()
+        XCTAssertEqual(row.value as? String, "Walk")
+        app.buttons["Start Task"].tap()
+        XCTAssertTrue(app.staticTexts["Walk"].waitForExistence(timeout: 5))
+        app.buttons["Cancel & Pick Another Later"].tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.swipeLeft()
+        app.buttons["Delete"].tap()
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Start Task"].exists)
     }
 }

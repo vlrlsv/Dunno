@@ -4,18 +4,19 @@ import SwiftData
 
 @Observable
 final class AppState {
+    private let defaults: UserDefaults
     var hasSeenTutorial: Bool {
         didSet {
-            UserDefaults.standard.set(hasSeenTutorial, forKey: "hasSeenTutorial")
+            defaults.set(hasSeenTutorial, forKey: "hasSeenTutorial")
         }
     }
     
     var activeTaskId: UUID? {
         didSet {
             if let activeTaskId {
-                UserDefaults.standard.set(activeTaskId.uuidString, forKey: "activeTaskId")
+                defaults.set(activeTaskId.uuidString, forKey: "activeTaskId")
             } else {
-                UserDefaults.standard.removeObject(forKey: "activeTaskId")
+                defaults.removeObject(forKey: "activeTaskId")
             }
         }
     }
@@ -23,9 +24,10 @@ final class AppState {
     // Transient: drives the randomizer full-screen cover, presented at the root.
     var isRandomizing: Bool = false
     
-    init() {
-        self.hasSeenTutorial = UserDefaults.standard.bool(forKey: "hasSeenTutorial")
-        if let uuidString = UserDefaults.standard.string(forKey: "activeTaskId"), let uuid = UUID(uuidString: uuidString) {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        self.hasSeenTutorial = defaults.bool(forKey: "hasSeenTutorial")
+        if let uuidString = defaults.string(forKey: "activeTaskId"), let uuid = UUID(uuidString: uuidString) {
             self.activeTaskId = uuid
         } else {
             self.activeTaskId = nil

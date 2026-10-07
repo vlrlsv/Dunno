@@ -14,7 +14,7 @@ struct TaskListView: View {
             VStack {
                 List {
                     ForEach(tasks) { task in
-                        TaskRow(task: task, onDelete: { delete(task) })
+                        TaskRow(task: task, onCommit: { title in saveTitle(title, for: task) })
                     }
                     .onDelete(perform: deleteTasks)
                     .onMove(perform: moveTasks)
@@ -97,41 +97,57 @@ struct TaskListView: View {
     private func moveTasks(from source: IndexSet, to destination: Int) {
         var reordered = tasks
         reordered.move(fromOffsets: source, toOffset: destination)
-        for (index, task) in reordered.enumerated() {
-            task.sortOrder = index
+        do {
+            try TaskStore.reorder(reordered, in: modelContext)
+        } catch {
+            saveErrorMessage = error.localizedDescription
         }
     }
     
     private func deleteTasks(offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(tasks[index])
+        do {
+            try TaskStore.delete(offsets.map { tasks[$0] }, from: modelContext)
+        } catch {
+            saveErrorMessage = error.localizedDescription
         }
     }
 
-    private func delete(_ task: TaskItem) {
-        modelContext.delete(task)
+    private func saveTitle(_ title: String, for task: TaskItem) {
+        do {
+            if title.isEmpty {
+                try TaskStore.delete([task], from: modelContext)
+            } else if title != task.title {
+                try TaskStore.updateTitle(task, to: title, in: modelContext)
+            }
+        } catch {
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }
 
-/// An inline-editable task row. Edits to `title` persist automatically because
-/// `TaskItem` is a SwiftData `@Model`. Clearing the title and committing removes
-/// the task.
+/// Keep edits in a draft until committed so autosave cannot persist partial input.
 private struct TaskRow: View {
-    @Bindable var task: TaskItem
-    let onDelete: () -> Void
+    let task: TaskItem
+    let onCommit: (String) -> Void
+    @State private var draftTitle: String
+
+    init(task: TaskItem, onCommit: @escaping (String) -> Void) {
+        self.task = task
+        self.onCommit = onCommit
+        _draftTitle = State(initialValue: task.title)
+    }
 
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        TextField("Task", text: $task.title)
+        TextField("Task", text: $draftTitle)
             .focused($isFocused)
             .submitLabel(.done)
+            .onSubmit { isFocused = false }
             .onChange(of: isFocused) { _, focused in
                 guard !focused else { return }
-                task.title = task.title.trimmingCharacters(in: .whitespaces)
-                if task.title.isEmpty {
-                    onDelete()
-                }
+                draftTitle = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                onCommit(draftTitle)
             }
     }
 }

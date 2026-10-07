@@ -41,7 +41,9 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **Task limit:** The app enforces a hard cap of 8 incomplete tasks. `TaskListView` hides the add-task input when `tasks.count >= 8`, and `addTask()` guards against this too. The `@Query` in `TaskListView` filters to `!isCompleted` and sorts by `sortOrder` — completed tasks remain in the store but are never shown.
 
-**Task list editing:** Rows are inline-editable (`TaskRow` wraps a `@Bindable` `TextField`); because `TaskItem` is a `@Model`, title edits persist automatically. Clearing a title and committing (losing focus) deletes the task. Rows are reorderable via `onMove`, which renumbers every task's `sortOrder` to match the new order.
+**Task list editing:** Rows keep titles in local drafts until submitted or focus is lost, then explicitly save through `TaskStore`. Clearing and committing a title deletes the task. Rows are reorderable via `onMove`, which renumbers and explicitly saves every task's `sortOrder`.
+
+**Saving mutations:** Editing, completion, deletion, and reordering use `TaskStore` to save explicitly and restore only the affected fields or deleted tasks on failure. Views display save errors. Completion clears the active ID only after saving successfully.
 
 **Adding tasks:** `TaskStore.insert` explicitly saves the shared context. On failure it removes only the new task, preserving other pending changes. The view retains the typed title and displays the save error. Do not use a context-wide rollback for a failed addition.
 

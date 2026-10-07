@@ -7,6 +7,70 @@ import Testing
 struct DunnoTests {
     private enum SaveFailure: Error { case rejected }
 
+    enum Mutation: CaseIterable { case title, completion, reorder, deletion }
+
+    private func mutate(
+        _ mutation: Mutation, task: TaskItem, context: ModelContext,
+        save: (ModelContext) throws -> Void
+    ) throws {
+        switch mutation {
+        case .title: try TaskStore.updateTitle(task, to: "Changed", in: context, save: save)
+        case .completion: try TaskStore.complete(task, in: context, save: save)
+        case .reorder: try TaskStore.reorder([task], in: context, save: save)
+        case .deletion: try TaskStore.delete([task], from: context, save: save)
+        }
+    }
+
+    @Test(arguments: Mutation.allCases)
+    func failedMutationRestoresOnlyItsOwnChanges(_ mutation: Mutation) throws {
+        let container = try ModelContainer(for: TaskItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let task = TaskItem(title: "Original", sortOrder: 5)
+        let other = TaskItem(title: "Other")
+        let deleted = TaskItem(title: "Deleted")
+        for item in [task, other, deleted] { context.insert(item) }
+        try context.save()
+        other.title = "Pending edit"
+        context.delete(deleted)
+
+        do {
+            try mutate(mutation, task: task, context: context) { _ in throw SaveFailure.rejected }
+            Issue.record("Expected the save error to propagate")
+        } catch SaveFailure.rejected {}
+
+        try context.save()
+        let saved = try ModelContext(container).fetch(FetchDescriptor<TaskItem>())
+        #expect(Set(saved.map(\.id)) == Set([task.id, other.id]))
+        let restored = try #require(saved.first { $0.id == task.id })
+        #expect(restored.title == "Original")
+        #expect(!restored.isCompleted)
+        #expect(restored.sortOrder == 5)
+        #expect(saved.first { $0.id == other.id }?.title == "Pending edit")
+    }
+
+    @Test(arguments: Mutation.allCases)
+    func successfulMutationIsSaved(_ mutation: Mutation) throws {
+        let container = try ModelContainer(for: TaskItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
+        let task = TaskItem(title: "Original", sortOrder: 5)
+        context.insert(task)
+        try context.save()
+        try mutate(mutation, task: task, context: context) { try $0.save() }
+        let saved = try ModelContext(container).fetch(FetchDescriptor<TaskItem>())
+        if mutation == .deletion {
+            #expect(saved.isEmpty)
+        } else {
+            let restored = try #require(saved.first)
+            #expect(restored.title == (mutation == .title ? "Changed" : "Original"))
+            #expect(restored.isCompleted == (mutation == .completion))
+            #expect(restored.sortOrder == (mutation == .reorder ? 0 : 5))
+        }
+    }
+
     @Test func failedAdditionPreservesOtherPendingChanges() throws {
         let container = try ModelContainer(
             for: TaskItem.self,

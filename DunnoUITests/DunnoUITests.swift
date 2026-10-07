@@ -56,6 +56,9 @@ final class DunnoUITests: XCTestCase {
         app.buttons["Mark Complete"].tap()
         XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Start Task"].exists)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
     }
 
     func testTaskLimitAndBlankInput() {
@@ -95,6 +98,10 @@ final class DunnoUITests: XCTestCase {
         row.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "Walk")
         app.textFields["New task..."].tap()
         XCTAssertEqual(row.value as? String, "Walk")
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertEqual(row.value as? String, "Walk")
         app.buttons["Start Task"].tap()
         XCTAssertTrue(app.staticTexts["Walk"].waitForExistence(timeout: 5))
         app.buttons["Cancel & Pick Another Later"].tap()
@@ -103,5 +110,8 @@ final class DunnoUITests: XCTestCase {
         app.buttons["Delete"].tap()
         XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Start Task"].exists)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.navigationBars["My Tasks (0/8)"].waitForExistence(timeout: 5))
     }
 }

@@ -1,7 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct ActiveTaskView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @State private var saveErrorMessage: String?
     
     let task: TaskItem
     
@@ -48,12 +51,22 @@ struct ActiveTaskView: View {
                 .padding(.horizontal, 40)
             }
         }
+        .alert("Couldn't Complete Task", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { saveErrorMessage = nil }
+        } message: {
+            Text(saveErrorMessage ?? "")
+        }
     }
     
     private func completeTask() {
-        withAnimation {
-            task.isCompleted = true
-            appState.clearActiveTask()
+        do {
+            try TaskStore.complete(task, in: modelContext)
+            withAnimation { appState.clearActiveTask() }
+        } catch {
+            saveErrorMessage = error.localizedDescription
         }
     }
     

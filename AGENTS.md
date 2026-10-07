@@ -34,10 +34,10 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **Navigation is state-driven, not route-driven.** `RootContentView` is the single gatekeeper that reads `AppState` and `@Query` to decide which top-level view to show:
 1. `WelcomeView` — first launch only (`!hasSeenTutorial`)
-2. `ActiveTaskView` — when an `activeTaskId` is set and resolves to a live task
+2. `ActiveTaskView` — when an `activeTaskId` is set and resolves to an unfinished task
 3. `MainTabView` — default (Tasks list + Settings tabs)
 
-`RootContentView` also validates `activeTaskId` on appear and on task list changes, clearing stale IDs when a task has been deleted.
+`RootContentView` queries unfinished tasks and validates `activeTaskId` on appear, on query membership changes, and on active ID changes. `AppState` resolves only unfinished tasks and clears IDs for missing or completed tasks.
 
 **Task limit:** The app enforces a hard cap of 8 incomplete tasks. `TaskListView` hides the add-task input when `tasks.count >= 8`, and `addTask()` guards against this too. The `@Query` in `TaskListView` filters to `!isCompleted` and sorts by `sortOrder` — completed tasks remain in the store but are never shown.
 

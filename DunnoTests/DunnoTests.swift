@@ -133,6 +133,49 @@ struct DunnoTests {
         try test(defaults)
     }
 
+    @Test func completedActiveTaskIsRejectedAndClearedFromDefaults() {
+        withDefaults { defaults in
+            let task = TaskItem(title: "Done")
+            task.isCompleted = true
+            defaults.set(task.id.uuidString, forKey: "activeTaskId")
+            let restored = AppState(defaults: defaults)
+            #expect(restored.activeTask(in: [task]) == nil)
+            restored.validateActiveTask(in: [task])
+            #expect(restored.activeTaskId == nil)
+            #expect(defaults.object(forKey: "activeTaskId") == nil)
+            #expect(AppState(defaults: defaults).activeTaskId == nil)
+        }
+    }
+
+    @Test func missingActiveTaskIsClearedEvenWhenOtherTasksExist() {
+        withDefaults { defaults in
+            let state = AppState(defaults: defaults)
+            state.setActiveTask(TaskItem(title: "Missing"))
+            let tasks = [TaskItem(title: "Other")]
+            #expect(state.activeTask(in: tasks) == nil)
+            state.validateActiveTask(in: tasks)
+            #expect(state.activeTaskId == nil)
+            #expect(AppState(defaults: defaults).activeTaskId == nil)
+        }
+    }
+
+    @Test func unfinishedActiveTaskIsPreservedUntilItCompletes() {
+        withDefaults { defaults in
+            let task = TaskItem(title: "Active")
+            let state = AppState(defaults: defaults)
+            state.setActiveTask(task)
+            let tasks = [TaskItem(title: "Other"), task]
+            #expect(state.activeTask(in: tasks)?.id == task.id)
+            state.validateActiveTask(in: tasks)
+            #expect(state.activeTaskId == task.id)
+            #expect(AppState(defaults: defaults).activeTaskId == task.id)
+            task.isCompleted = true
+            state.validateActiveTask(in: tasks)
+            #expect(state.activeTask(in: tasks) == nil)
+            #expect(state.activeTaskId == nil)
+        }
+    }
+
     @Test func freshStateRequiresOnboarding() {
         withDefaults { defaults in
             let state = AppState(defaults: defaults)

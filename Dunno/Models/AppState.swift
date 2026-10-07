@@ -45,4 +45,15 @@ final class AppState {
     func clearActiveTask() {
         activeTaskId = nil
     }
+
+    func activeTask(in tasks: [TaskItem]) -> TaskItem? {
+        guard let activeTaskId else { return nil }
+        return tasks.first { $0.id == activeTaskId && !$0.isCompleted }
+    }
+
+    func validateActiveTask(in tasks: [TaskItem]) {
+        if activeTaskId != nil && activeTask(in: tasks) == nil {
+            clearActiveTask()
+        }
+    }
 }

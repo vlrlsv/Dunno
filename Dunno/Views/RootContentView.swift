@@ -3,14 +3,14 @@ import SwiftData
 
 struct RootContentView: View {
     @Environment(AppState.self) private var appState
-    @Query private var tasks: [TaskItem]
+    @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }) private var tasks: [TaskItem]
     
     var body: some View {
         @Bindable var appState = appState
         Group {
             if !appState.hasSeenTutorial {
                 WelcomeView()
-            } else if let activeId = appState.activeTaskId, let activeTask = tasks.first(where: { $0.id == activeId }) {
+            } else if let activeTask = appState.activeTask(in: tasks) {
                 ActiveTaskView(task: activeTask)
             } else {
                 MainTabView()
@@ -19,21 +19,16 @@ struct RootContentView: View {
         // Presented here, above the MainTabView/ActiveTaskView swap, so the cover
         // is never orphaned and dismisses directly onto the picked ActiveTaskView.
         .fullScreenCover(isPresented: $appState.isRandomizing) {
-            RandomizerView(tasks: tasks.filter { !$0.isCompleted })
+            RandomizerView(tasks: tasks)
         }
         .onAppear {
-            validateActiveTask()
+            appState.validateActiveTask(in: tasks)
         }
-        .onChange(of: tasks) { _, _ in
-            validateActiveTask()
+        .onChange(of: tasks.map(\.id)) { _, _ in
+            appState.validateActiveTask(in: tasks)
         }
-    }
-    
-    private func validateActiveTask() {
-        if let activeId = appState.activeTaskId {
-            if !tasks.contains(where: { $0.id == activeId }) {
-                appState.clearActiveTask()
-            }
+        .onChange(of: appState.activeTaskId) { _, _ in
+            appState.validateActiveTask(in: tasks)
         }
     }
 }

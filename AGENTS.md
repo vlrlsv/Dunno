@@ -2,9 +2,13 @@
 
 This file provides guidance to coding agents working in this repository.
 
+At the start of each session, read `.codex/local-notes.md` if it exists. Keep local reminders there, not in this file; the notes file is Git-ignored.
+
 ## Project Overview
 
 Dunno is an iOS app (SwiftUI + SwiftData) that helps users avoid decision paralysis by randomly selecting a task for them. Users add up to 8 incomplete tasks, tap "Pick a Random Task," and the app locks them into one task until they complete or cancel it.
+
+The current minimum supported version is iOS 26.4. Keep app and test deployment targets aligned.
 
 ## Build & Test
 

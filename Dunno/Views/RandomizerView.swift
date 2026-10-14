@@ -16,17 +16,20 @@ struct RandomizerView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color.indigo, Color(red: 0.30, green: 0.13, blue: 0.55)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            Color.dunnoBase.ignoresSafeArea()
 
             VStack(spacing: 32) {
-                Text(hasLanded ? "Your task" : "Picking a task…")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                // The mascot shakes while the wheel spins and settles once it lands.
+                MascotView(size: 96)
+                    .phaseAnimator([-7.0, 7.0]) { mascot, angle in
+                        mascot.rotationEffect(.degrees(hasLanded ? 0 : angle))
+                    } animation: { _ in
+                        .easeInOut(duration: 0.14)
+                    }
+
+                Text(hasLanded ? "Dunno picked" : "Picking for you…")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
                     .contentTransition(.opacity)
 
                 wheel
@@ -41,6 +44,13 @@ struct RandomizerView: View {
         let windowHeight = rowHeight * CGFloat(visibleRows)
 
         return ZStack {
+            // Accent fill behind the center slot, revealed once the wheel lands.
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.dunnoAccent)
+                .frame(height: rowHeight - 8)
+                .opacity(hasLanded ? 1 : 0)
+                .animation(.snappy, value: hasLanded)
+
             // The scrolling strip of task rows.
             VStack(spacing: 0) {
                 ForEach(Array(reel.enumerated()), id: \.offset) { index, task in
@@ -51,10 +61,9 @@ struct RandomizerView: View {
             .offset(y: offset)
 
             // Fixed selection frame over the center slot.
-            RoundedRectangle(cornerRadius: 18)
-                .strokeBorder(.white, lineWidth: 3)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .strokeBorder(Color.dunnoAccent, lineWidth: 3)
                 .frame(height: rowHeight - 8)
-                .shadow(color: .black.opacity(0.35), radius: 10)
                 .allowsHitTesting(false)
         }
         .frame(height: windowHeight)
@@ -76,14 +85,14 @@ struct RandomizerView: View {
 
     private func rowView(_ task: TaskItem, isWinner: Bool) -> some View {
         Text(task.title)
-            .font(.system(size: 30, weight: .bold))
-            .foregroundStyle(.white)
+            .font(.dunnoDisplay(28))
+            .foregroundStyle(isWinner ? Color.dunnoOnAccent : Color.primary)
             .multilineTextAlignment(.center)
             .lineLimit(2)
             .minimumScaleFactor(0.6)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 20)
-            .scaleEffect(isWinner ? 1.12 : 1.0)
+            .scaleEffect(isWinner ? 1.06 : 1.0)
             .animation(.spring(response: 0.4, dampingFraction: 0.55), value: isWinner)
     }
 

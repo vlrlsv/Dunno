@@ -2,41 +2,37 @@ import SwiftUI
 
 struct WelcomeView: View {
     @Environment(AppState.self) private var appState
-    
+
     var body: some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 0) {
             Spacer()
-            
-            Image(systemName: "dice.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.blue)
-            
-            Text("Welcome to Dunno")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            Text("Add up to 8 tasks to your list, then let the app pick one for you at random. Once a task is picked, you must complete it or cancel it before doing anything else!")
+
+            MascotView(size: 176)
+
+            Text("Can't decide?\nDunno will.")
+                .font(.dunnoDisplay(40))
                 .multilineTextAlignment(.center)
-                .padding(.horizontal)
-                .foregroundColor(.secondary)
-            
+                .padding(.top, 40)
+
+            Text("List up to 8 things you could do. Dunno picks one, and you stick with it until it's done.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.top, 16)
+                .padding(.horizontal, 32)
+
             Spacer()
-            
-            Button(action: {
+
+            Button("Get started") {
                 withAnimation {
                     appState.completeTutorial()
                 }
-            }) {
-                Text("Get Started")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 40)
+            .buttonStyle(PrimaryButtonStyle())
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
+        .frame(maxWidth: .infinity)
+        .background(Color.dunnoBase.ignoresSafeArea())
     }
 }

@@ -6,7 +6,7 @@ At the start of each session, read `.codex/local-notes.md` if it exists. Keep lo
 
 ## Project Overview
 
-Dunno is an iOS app (SwiftUI + SwiftData) that helps users avoid decision paralysis by randomly selecting a task for them. Users add up to 8 incomplete tasks, tap "Pick a Random Task," and the app locks them into one task until they complete or cancel it.
+Dunno is an iOS app (SwiftUI + SwiftData) that helps users avoid decision paralysis by randomly selecting a task for them. Users add up to 8 incomplete tasks, tap "Pick for me," and the app locks them into one task until they complete or cancel it.
 
 The current minimum supported version is iOS 26.4. Keep app and test deployment targets aligned.
 
@@ -33,7 +33,7 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **State management:** Two layers — `AppState` (transient UI state, persisted to `UserDefaults`) and SwiftData (task persistence via `@Model`).
 
-- `AppState` (`@Observable`) tracks `hasSeenTutorial` and `activeTaskId`. Both are written to `UserDefaults` on `didSet` so they survive app restarts. It also holds a transient `isRandomizing` flag that drives the randomizer cover — this one is deliberately *not* persisted.
+- `AppState` (`@Observable`) tracks `hasSeenTutorial`, `activeTaskId`, and `activeTaskStartDate` (drives the elapsed timer on `ActiveTaskView`; set by `setActiveTask(_:)`, cleared by `clearActiveTask()`). All are written to `UserDefaults` on `didSet` so they survive app restarts. It also holds a transient `isRandomizing` flag that drives the randomizer cover — this one is deliberately *not* persisted.
 - `TaskItem` is the sole SwiftData model. The `modelContainer` is attached at the app root and accessed via `@Environment(\.modelContext)` in views.
 
 **Navigation is state-driven, not route-driven.** `RootContentView` is the single gatekeeper that reads `AppState` and `@Query` to decide which top-level view to show:
@@ -51,7 +51,15 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **Adding tasks:** `TaskStore.insert` explicitly saves the shared context. On failure it removes only the new task, preserving other pending changes. The view retains the typed title and displays the save error. Do not use a context-wide rollback for a failed addition.
 
-**Randomizer flow:** The randomizer is presented from `RootContentView` as a `.fullScreenCover` bound to `appState.isRandomizing`, so it sits above the `MainTabView`/`ActiveTaskView` swap and dismisses cleanly onto the picked `ActiveTaskView`. `RandomizerView` receives a snapshot of the incomplete tasks and animates a decelerating slot-machine wheel: it builds a 16-cycle reel, picks a random winner, and scrolls to it with a single `timingCurve` animation (~2.8s). On completion it holds ~1s, then calls `appState.setActiveTask(_:)` and clears `isRandomizing`. `TaskListView.pickRandomTask()` short-circuits the wheel when there is only one task — it calls `setActiveTask(_:)` directly, and the button reads "Start Task" instead of "Pick a Random Task."
+**Randomizer flow:** The randomizer is presented from `RootContentView` as a `.fullScreenCover` bound to `appState.isRandomizing`, so it sits above the `MainTabView`/`ActiveTaskView` swap and dismisses cleanly onto the picked `ActiveTaskView`. `RandomizerView` receives a snapshot of the incomplete tasks and animates a decelerating slot-machine wheel: it builds a 16-cycle reel, picks a random winner, and scrolls to it with a single `timingCurve` animation (~2.8s). On completion it holds ~1s, then calls `appState.setActiveTask(_:)` and clears `isRandomizing`. `TaskListView.pickRandomTask()` short-circuits the wheel when there is only one task — it calls `setActiveTask(_:)` directly, and the button reads "Start task" instead of "Pick for me."
+
+## Design System
+
+Defined in `Dunno/Views/Theme.swift`, with colors as light/dark color sets in `Assets.xcassets`. The app follows the system light/dark setting.
+
+- **60/30/10 palette:** `Color.dunnoBase` (60% — screen backgrounds), `Color.dunnoSurface` (30% — cards, rows, fields), `Color.dunnoAccent` (10% — primary actions, highlights). `dunnoAccent` is the `AccentColor` asset: black in light mode, warm white in dark mode (black would vanish on the dark base). Put text/icons on the accent with `Color.dunnoOnAccent`.
+- **Mascot:** the brand mascot is black in both modes and always sits on the light `dunnoMascotStage` disc via `MascotView`. It renders the `Mascot` image asset when present, otherwise a drawn placeholder.
+- **Components:** one `PrimaryButtonStyle` (accent capsule) per screen; `SecondaryButtonStyle` for the alternative choice. Headlines and task titles use `Font.dunnoDisplay(_:)` (SF Rounded, bold). Lists hide their default background (`.scrollContentBackground(.hidden)`) and use `dunnoSurface` row backgrounds.
 
 ## Key Conventions
 

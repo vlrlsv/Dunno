@@ -5,52 +5,63 @@ struct ActiveTaskView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @State private var saveErrorMessage: String?
-    
+
     let task: TaskItem
-    
+
     var body: some View {
-        ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
-            
-            VStack(spacing: 50) {
+        VStack(spacing: 0) {
+            Spacer()
+
+            VStack(spacing: 24) {
+                MascotView(size: 88)
+
                 VStack(spacing: 10) {
-                    Text("Your Task")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                    
+                    Text("Your task")
+                        .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                        .foregroundStyle(.secondary)
+
                     Text(task.title)
-                        .font(.system(size: 40, weight: .bold))
+                        .font(.dunnoDisplay(36))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                        .minimumScaleFactor(0.6)
+                        .lineLimit(4)
                 }
-                
-                VStack(spacing: 20) {
-                    Button(action: completeTask) {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Mark Complete")
-                        }
-                        .font(.title2.bold())
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.green)
-                        .cornerRadius(16)
+
+                if let start = appState.activeTaskStartDate {
+                    Label {
+                        Text(start, style: .timer)
+                            .monospacedDigit()
+                    } icon: {
+                        Image(systemName: "timer")
                     }
-                    
-                    Button(action: cancelTask) {
-                        Text("Cancel & Pick Another Later")
-                            .font(.headline)
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red.opacity(0.1))
-                            .cornerRadius(16)
-                    }
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(Color.dunnoOnAccent)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.dunnoAccent, in: Capsule())
                 }
-                .padding(.horizontal, 40)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 40)
+            .padding(.horizontal, 24)
+            .background(Color.dunnoSurface, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .padding(.horizontal, 20)
+
+            Spacer()
+
+            VStack(spacing: 12) {
+                Button(action: completeTask) {
+                    Label("Done", systemImage: "checkmark")
+                }
+                .buttonStyle(PrimaryButtonStyle())
+
+                Button("Not now", action: cancelTask)
+                    .buttonStyle(SecondaryButtonStyle())
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
         }
+        .background(Color.dunnoBase.ignoresSafeArea())
         .alert("Couldn't Complete Task", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -60,7 +71,7 @@ struct ActiveTaskView: View {
             Text(saveErrorMessage ?? "")
         }
     }
-    
+
     private func completeTask() {
         do {
             try TaskStore.complete(task, in: modelContext)
@@ -69,7 +80,7 @@ struct ActiveTaskView: View {
             saveErrorMessage = error.localizedDescription
         }
     }
-    
+
     private func cancelTask() {
         withAnimation {
             appState.clearActiveTask()

@@ -9,45 +9,46 @@ struct TaskListView: View {
     @State private var newTaskTitle: String = ""
     @State private var saveErrorMessage: String?
 
+    private let maxTasks = 8
+
     var body: some View {
         NavigationStack {
-            VStack {
-                List {
-                    ForEach(tasks) { task in
-                        TaskRow(task: task, onCommit: { title in saveTitle(title, for: task) })
+            List {
+                Section {
+                    if tasks.isEmpty {
+                        emptyState
+                    }
+
+                    ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                        TaskRow(task: task, number: index + 1, onCommit: { title in saveTitle(title, for: task) })
                     }
                     .onDelete(perform: deleteTasks)
                     .onMove(perform: moveTasks)
 
-                    if tasks.count < 8 {
-                        HStack {
-                            TextField("New task...", text: $newTaskTitle)
-                                .onSubmit {
-                                    addTask()
-                                }
-                            Button(action: addTask) {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(.blue)
-                            }
-                            .disabled(newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
-                        }
+                    if tasks.count < maxTasks {
+                        addTaskRow
                     }
+                } header: {
+                    SlotsIndicator(filled: tasks.count, total: maxTasks)
+                        .padding(.bottom, 8)
                 }
-                
+                .listRowBackground(Color.dunnoSurface)
+                .listRowSeparatorTint(Color.dunnoBase)
+            }
+            .scrollContentBackground(.hidden)
+            .background(Color.dunnoBase.ignoresSafeArea())
+            .safeAreaInset(edge: .bottom) {
                 if !tasks.isEmpty {
                     Button(action: pickRandomTask) {
-                        Text(tasks.count == 1 ? "Start Task" : "Pick a Random Task")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.indigo)
-                            .cornerRadius(12)
+                        Label(tasks.count == 1 ? "Start task" : "Pick for me",
+                              systemImage: tasks.count == 1 ? "play.fill" : "dice.fill")
                     }
-                    .padding()
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
                 }
             }
-            .navigationTitle("My Tasks (\(tasks.count)/8)")
+            .navigationTitle("Your tasks")
             .toolbar {
                 if !tasks.isEmpty {
                     EditButton()
@@ -67,7 +68,42 @@ struct TaskListView: View {
             }
         }
     }
-    
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            MascotView(size: 96)
+            Text("Nothing to pick from yet")
+                .font(.dunnoDisplay(20))
+            Text("Add a few things you could do, and Dunno will choose one.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+    }
+
+    private var addTaskRow: some View {
+        HStack(spacing: 12) {
+            TextField("Add a task", text: $newTaskTitle)
+                .submitLabel(.done)
+                .onSubmit {
+                    addTask()
+                }
+            Button(action: addTask) {
+                Image(systemName: "plus")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.dunnoOnAccent)
+                    .frame(width: 30, height: 30)
+                    .background(Color.dunnoAccent, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty)
+            .opacity(newTaskTitle.trimmingCharacters(in: .whitespaces).isEmpty ? 0.3 : 1)
+            .accessibilityLabel("Add task")
+        }
+    }
+
     private func pickRandomTask() {
         // With a single task there's nothing to randomize — go straight to it.
         if tasks.count == 1, let only = tasks.first {
@@ -79,7 +115,7 @@ struct TaskListView: View {
 
     private func addTask() {
         let title = newTaskTitle.trimmingCharacters(in: .whitespaces)
-        guard !title.isEmpty, tasks.count < 8 else { return }
+        guard !title.isEmpty, tasks.count < maxTasks else { return }
         let nextOrder = (tasks.map(\.sortOrder).max() ?? -1) + 1
         let newTask = TaskItem(title: title, sortOrder: nextOrder)
         do {
@@ -125,14 +161,41 @@ struct TaskListView: View {
     }
 }
 
+/// Eight pips showing how many of the task slots are in use.
+private struct SlotsIndicator: View {
+    let filled: Int
+    let total: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<total, id: \.self) { index in
+                Capsule()
+                    .fill(index < filled ? Color.dunnoAccent : Color.dunnoSurface)
+                    .frame(height: 6)
+            }
+            Text("\(filled)/\(total)")
+                .font(.system(.footnote, design: .rounded).weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .padding(.leading, 6)
+        }
+        .animation(.snappy, value: filled)
+        .textCase(nil)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(filled) of \(total) tasks")
+    }
+}
+
 /// Keep edits in a draft until committed so autosave cannot persist partial input.
 private struct TaskRow: View {
     let task: TaskItem
+    let number: Int
     let onCommit: (String) -> Void
     @State private var draftTitle: String
 
-    init(task: TaskItem, onCommit: @escaping (String) -> Void) {
+    init(task: TaskItem, number: Int, onCommit: @escaping (String) -> Void) {
         self.task = task
+        self.number = number
         self.onCommit = onCommit
         _draftTitle = State(initialValue: task.title)
     }
@@ -140,14 +203,26 @@ private struct TaskRow: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        TextField("Task", text: $draftTitle)
-            .focused($isFocused)
-            .submitLabel(.done)
-            .onSubmit { isFocused = false }
-            .onChange(of: isFocused) { _, focused in
-                guard !focused else { return }
-                draftTitle = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-                onCommit(draftTitle)
-            }
+        HStack(spacing: 14) {
+            Text("\(number)")
+                .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+                .frame(width: 28, height: 28)
+                .background(Color.dunnoBase, in: Circle())
+                .accessibilityHidden(true)
+
+            TextField("Task", text: $draftTitle)
+                .font(.body.weight(.medium))
+                .focused($isFocused)
+                .submitLabel(.done)
+                .onSubmit { isFocused = false }
+                .onChange(of: isFocused) { _, focused in
+                    guard !focused else { return }
+                    draftTitle = draftTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    onCommit(draftTitle)
+                }
+        }
+        .padding(.vertical, 4)
     }
 }

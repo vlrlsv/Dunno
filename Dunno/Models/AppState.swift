@@ -21,6 +21,13 @@ final class AppState {
         }
     }
 
+    /// When the current active task was picked; drives the elapsed timer.
+    var activeTaskStartDate: Date? {
+        didSet {
+            defaults.set(activeTaskStartDate, forKey: "activeTaskStartDate")
+        }
+    }
+
     // Transient: drives the randomizer full-screen cover, presented at the root.
     var isRandomizing: Bool = false
     
@@ -32,6 +39,7 @@ final class AppState {
         } else {
             self.activeTaskId = nil
         }
+        self.activeTaskStartDate = defaults.object(forKey: "activeTaskStartDate") as? Date
     }
     
     func completeTutorial() {
@@ -40,10 +48,12 @@ final class AppState {
     
     func setActiveTask(_ task: TaskItem) {
         activeTaskId = task.id
+        activeTaskStartDate = Date()
     }
     
     func clearActiveTask() {
         activeTaskId = nil
+        activeTaskStartDate = nil
     }
 
     func activeTask(in tasks: [TaskItem]) -> TaskItem? {

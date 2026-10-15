@@ -47,7 +47,7 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 **Task list editing:** Rows keep titles in local drafts until submitted or focus is lost, then explicitly save through `TaskStore`. Clearing and committing a title deletes the task. Rows are reorderable via `onMove`, which renumbers and explicitly saves every task's `sortOrder`.
 
-**Saving mutations:** Editing, completion, deletion, and reordering use `TaskStore` to save explicitly and restore only the affected fields or deleted tasks on failure. Views display save errors. Completion clears the active ID only after saving successfully.
+**Saving mutations:** Editing, completion, deletion, and reordering use `TaskStore` to save explicitly and restore only the affected fields or deleted tasks on failure. Views display save errors. Completion clears the active ID only after saving successfully. `ActiveTaskView` plays a ~1.5s confetti celebration before it saves, because saving the completion immediately leaves the screen.
 
 **Adding tasks:** `TaskStore.insert` explicitly saves the shared context. On failure it removes only the new task, preserving other pending changes. The view retains the typed title and displays the save error. Do not use a context-wide rollback for a failed addition.
 
@@ -58,11 +58,11 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 Defined in `Dunno/Views/Theme.swift`, with colors as light/dark color sets in `Assets.xcassets`. The app follows the system light/dark setting.
 
 - **60/30/10 palette:** `Color.dunnoBase` (60% — screen backgrounds: light cream-yellow / near-black eggplant), `Color.dunnoSurface` (30% — cards, rows, fields, tab bar), `Color.dunnoAccent` (10% — primary actions, highlights). `dunnoAccent` is the `AccentColor` asset: black in light mode, light yellow in dark mode (black would vanish on the dark base). Put text/icons on the accent with `Color.dunnoOnAccent`.
-- **Mascot:** the brand mascot (`Mascot` image asset, a flat no-fur version of the original artwork) is black in both modes. `BouncingMascot(size:)` is the free-standing animated version used on the welcome screen and the empty task list; `MascotView` draws it statically, optionally on the `dunnoMascotStage` disc.
+- **Mascot:** the brand mascot (`Mascot` image asset, a flat no-fur version of the original artwork) is black in both modes. `BouncingMascot(size:)` is the free-standing animated version used on the welcome screen and the empty task list; `MascotView` draws it statically. The mascot always stands free, with no backing disc.
 - **Navigation chrome:** `MainTabView` uses a custom floating `DunnoTabBar` (accent pill on the selected tab) stacked below the content instead of the system tab bar.
 - **Components:** one `PrimaryButtonStyle` (accent capsule) per screen; `SecondaryButtonStyle` for the alternative choice. Headlines and task titles use `Font.dunnoDisplay(_:)` (SF Rounded, bold). Lists hide their default background (`.scrollContentBackground(.hidden)`) and use `dunnoSurface` row backgrounds.
 
-**Design review helpers (Debug only):** `ScreenPreviews.swift` has Xcode previews for every screen with sample data. Launching with `-DunnoSampleTasks N` replaces the open tasks with N sample tasks.
+**Design review helpers (Debug only):** `ScreenPreviews.swift` has Xcode previews for every screen with sample data. Launch arguments: `-DunnoSampleTasks N` replaces the open tasks with N samples; `-DunnoOpenScreen randomizer|active` jumps straight to that screen; `-DunnoAutoComplete` presses Done on the active task two seconds after it appears.
 
 ## Key Conventions
 

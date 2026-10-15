@@ -18,19 +18,13 @@ struct RandomizerView: View {
         ZStack {
             Color.dunnoBase.ignoresSafeArea()
 
-            VStack(spacing: 32) {
-                // The mascot shakes while the wheel spins and settles once it lands.
-                MascotView(size: 96)
-                    .phaseAnimator([-7.0, 7.0]) { mascot, angle in
-                        mascot.rotationEffect(.degrees(hasLanded ? 0 : angle))
-                    } animation: { _ in
-                        .easeInOut(duration: 0.14)
-                    }
-
-                Text(hasLanded ? "Dunno picked" : "Picking for you…")
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .contentTransition(.opacity)
+            VStack(spacing: 28) {
+                VStack(spacing: 2) {
+                    ThoughtBubble(text: hasLanded ? "This one!" : "Hmm… let me think…")
+                        .contentTransition(.opacity)
+                        .animation(.snappy, value: hasLanded)
+                    RandomizerMascot(hasLanded: hasLanded)
+                }
 
                 wheel
             }
@@ -52,13 +46,9 @@ struct RandomizerView: View {
                 .animation(.snappy, value: hasLanded)
 
             // The scrolling strip of task rows.
-            VStack(spacing: 0) {
-                ForEach(Array(reel.enumerated()), id: \.offset) { index, task in
-                    rowView(task, isWinner: hasLanded && index == winnerIndex)
-                        .frame(height: rowHeight)
-                }
+            ReelStrip(offset: offset, count: reel.count, rowHeight: rowHeight, windowHeight: windowHeight) { index in
+                rowView(reel[index], isWinner: hasLanded && index == winnerIndex)
             }
-            .offset(y: offset)
 
             // Fixed selection frame over the center slot.
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -129,10 +119,75 @@ struct RandomizerView: View {
         } completion: {
             hasLanded = true
             // Hold on the result briefly, then hand off to ActiveTaskView.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) {
                 appState.setActiveTask(winnerTask)
                 appState.isRandomizing = false
             }
         }
+    }
+}
+
+/// The reel of rows. It's `Animatable` on its offset, so every animation frame
+/// knows exactly where each row is and can shrink and dim the rows further from
+/// the centre slot — no lag between the spin and the highlight.
+private struct ReelStrip<Row: View>: View, Animatable {
+    var offset: CGFloat
+    let count: Int
+    let rowHeight: CGFloat
+    let windowHeight: CGFloat
+    @ViewBuilder let row: (Int) -> Row
+
+    var animatableData: CGFloat {
+        get { offset }
+        set { offset = newValue }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(0..<count, id: \.self) { index in
+                // Row centre within the window, given the strip is centred and offset.
+                let rowCenter = windowHeight / 2 + offset - CGFloat(count) * rowHeight / 2 + (CGFloat(index) + 0.5) * rowHeight
+                let distance = min(abs(rowCenter - windowHeight / 2) / rowHeight, 2.5)
+                row(index)
+                    .frame(height: rowHeight)
+                    .scaleEffect(1 - distance * 0.13)
+                    .opacity(1 - distance * 0.3)
+            }
+        }
+        .offset(y: offset)
+    }
+}
+
+/// The randomizer's mascot: quick, excited hops with sound waves from its horn
+/// while the wheel spins, then one big happy jump when it lands.
+private struct RandomizerMascot: View {
+    let hasLanded: Bool
+    private let size: CGFloat = 96
+
+    var body: some View {
+        MascotView(size: size)
+            .phaseAnimator([false, true]) { mascot, up in
+                let hopping = up && !hasLanded
+                return mascot
+                    .scaleEffect(x: hopping ? 0.95 : 1.04, y: hopping ? 1.06 : 0.95, anchor: .bottom)
+                    .offset(y: hopping ? -12 : 0)
+            } animation: { _ in
+                .easeInOut(duration: 0.17)
+            }
+            .keyframeAnimator(initialValue: CGFloat(0), trigger: hasLanded) { mascot, lift in
+                mascot.offset(y: lift)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    CubicKeyframe(-36, duration: 0.24)
+                    SpringKeyframe(0, duration: 0.5, spring: .bouncy)
+                }
+            }
+            .overlay {
+                if !hasLanded {
+                    HornSoundWaves(size: size)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeOut(duration: 0.2), value: hasLanded)
     }
 }

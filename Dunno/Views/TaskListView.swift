@@ -29,8 +29,22 @@ struct TaskListView: View {
                         addTaskRow
                     }
                 } header: {
-                    SlotsIndicator(filled: tasks.count, total: maxTasks)
-                        .padding(.bottom, 8)
+                    VStack(alignment: .leading, spacing: 4) {
+                        SlotsIndicator(filled: tasks.count, total: maxTasks)
+                            .padding(.bottom, 8)
+
+                        // Once there are tasks, the mascot moves up between the slots
+                        // bar and the list and comments on the work ahead.
+                        if !tasks.isEmpty {
+                            HStack(alignment: .center, spacing: 2) {
+                                Spacer(minLength: 0)
+                                ThoughtBubble(text: "I see you have some work to do!", trail: .trailing)
+                                BouncingMascot(size: 58)
+                            }
+                            .transition(.scale(scale: 0.3, anchor: .trailing).combined(with: .opacity))
+                        }
+                    }
+                    .animation(.spring(response: 0.45, dampingFraction: 0.6), value: tasks.isEmpty)
                 }
                 .listRowBackground(Color.dunnoSurface)
                 .listRowSeparatorTint(Color.dunnoBase)
@@ -70,7 +84,7 @@ struct TaskListView: View {
 
     private var emptyState: some View {
         VStack(spacing: 4) {
-            SpeechBubble(text: "Give me something to pick!")
+            ThoughtBubble(text: "Give me something to pick!")
             BouncingMascot(size: 120)
         }
         .frame(maxWidth: .infinity)
@@ -218,36 +232,5 @@ private struct TaskRow: View {
                 }
         }
         .padding(.vertical, 4)
-    }
-}
-
-/// A small rounded bubble with a tail pointing down at the mascot.
-private struct SpeechBubble: View {
-    let text: String
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(text)
-                .font(.system(.subheadline, design: .rounded).weight(.semibold))
-                .foregroundStyle(Color.dunnoOnAccent)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color.dunnoAccent, in: Capsule())
-
-            Triangle()
-                .fill(Color.dunnoAccent)
-                .frame(width: 16, height: 9)
-        }
-    }
-
-    private struct Triangle: Shape {
-        func path(in rect: CGRect) -> Path {
-            Path { path in
-                path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-                path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-                path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-                path.closeSubpath()
-            }
-        }
     }
 }

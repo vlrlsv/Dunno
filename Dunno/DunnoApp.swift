@@ -32,6 +32,20 @@ struct DunnoApp: App {
            flag + 1 < arguments.count, let count = Int(arguments[flag + 1]) {
             Self.replaceOpenTasks(withSamples: count, in: container.mainContext)
         }
+        // `-DunnoOpenScreen randomizer|active` jumps straight to that screen.
+        if let flag = arguments.firstIndex(of: "-DunnoOpenScreen"), flag + 1 < arguments.count {
+            let open = (try? container.mainContext.fetch(FetchDescriptor<TaskItem>(
+                predicate: #Predicate { !$0.isCompleted }, sortBy: [SortDescriptor(\.sortOrder)]))) ?? []
+            switch arguments[flag + 1] {
+            case "randomizer" where !open.isEmpty:
+                appState.clearActiveTask()
+                appState.isRandomizing = true
+            case "active":
+                if let first = open.first { appState.setActiveTask(first) }
+            default:
+                break
+            }
+        }
         #endif
     }
 

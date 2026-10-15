@@ -28,6 +28,16 @@ final class DunnoUITests: XCTestCase {
         XCTAssertTrue(taskCount(0).waitForExistence(timeout: 5))
     }
 
+    /// Taps a button once it can actually receive the tap. After the randomizer,
+    /// the active-task buttons exist while the randomizer cover is still
+    /// sliding away on top of them, so a plain tap can land on the cover.
+    private func tapWhenHittable(_ label: String, timeout: TimeInterval = 10) {
+        let button = app.buttons[label]
+        let hittable = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: button)
+        wait(for: [hittable], timeout: timeout)
+        button.tap()
+    }
+
     private func addTask(_ title: String) {
         let field = app.textFields["Add a task"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
@@ -55,10 +65,10 @@ final class DunnoUITests: XCTestCase {
         app.terminate()
         app.launch()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
-        app.buttons["Not now"].tap()
+        tapWhenHittable("Not now")
         XCTAssertTrue(app.buttons["Start task"].waitForExistence(timeout: 5))
         app.buttons["Start task"].tap()
-        app.buttons["Done"].tap()
+        tapWhenHittable("Done")
         XCTAssertTrue(taskCount(0).waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["Start task"].exists)
         app.terminate()
@@ -79,7 +89,7 @@ final class DunnoUITests: XCTestCase {
         XCTAssertFalse(app.textFields["Add a task"].exists)
         app.buttons["Pick for me"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
-        app.buttons["Done"].tap()
+        tapWhenHittable("Done")
         XCTAssertTrue(taskCount(7).waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Add a task"].exists)
     }
@@ -91,7 +101,7 @@ final class DunnoUITests: XCTestCase {
         app.buttons["Pick for me"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Read"].exists || app.staticTexts["Walk"].exists)
-        app.buttons["Not now"].tap()
+        tapWhenHittable("Not now")
         XCTAssertTrue(taskCount(2).waitForExistence(timeout: 5))
     }
 
@@ -109,7 +119,7 @@ final class DunnoUITests: XCTestCase {
         XCTAssertEqual(row.value as? String, "Walk")
         app.buttons["Start task"].tap()
         XCTAssertTrue(app.staticTexts["Walk"].waitForExistence(timeout: 5))
-        app.buttons["Not now"].tap()
+        tapWhenHittable("Not now")
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.swipeLeft()
         app.buttons["Delete"].tap()

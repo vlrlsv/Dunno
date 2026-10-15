@@ -25,7 +25,28 @@ struct DunnoApp: App {
         #endif
         _appState = State(initialValue: AppState())
         container = try! ModelContainer(for: TaskItem.self)
+        #if DEBUG
+        // Design review helper: `-DunnoSampleTasks N` replaces the open tasks with N samples.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let flag = arguments.firstIndex(of: "-DunnoSampleTasks"),
+           flag + 1 < arguments.count, let count = Int(arguments[flag + 1]) {
+            Self.replaceOpenTasks(withSamples: count, in: container.mainContext)
+        }
+        #endif
     }
+
+    #if DEBUG
+    private static func replaceOpenTasks(withSamples count: Int, in context: ModelContext) {
+        let samples = ["Разобрать почту", "Убраться на столе", "Пробежка", "Позвонить маме",
+                       "Прочитать главу книги", "Полить цветы", "Ответить Ане", "Сходить в магазин"]
+        let open = (try? context.fetch(FetchDescriptor<TaskItem>(predicate: #Predicate { !$0.isCompleted }))) ?? []
+        open.forEach(context.delete)
+        for (index, title) in samples.prefix(max(0, min(count, 8))).enumerated() {
+            context.insert(TaskItem(title: title, sortOrder: index))
+        }
+        try? context.save()
+    }
+    #endif
 
     var body: some Scene {
         WindowGroup {

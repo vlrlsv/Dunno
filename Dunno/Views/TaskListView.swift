@@ -40,8 +40,7 @@ struct TaskListView: View {
             .safeAreaInset(edge: .bottom) {
                 if !tasks.isEmpty {
                     Button(action: pickRandomTask) {
-                        Label(tasks.count == 1 ? "Start task" : "Pick for me",
-                              systemImage: tasks.count == 1 ? "play.fill" : "dice.fill")
+                        Text(tasks.count == 1 ? "Start task" : "Pick for me")
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, 24)
@@ -70,17 +69,12 @@ struct TaskListView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            MascotView(size: 96)
-            Text("Nothing to pick from yet")
-                .font(.dunnoDisplay(20))
-            Text("Add a few things you could do, and Dunno will choose one.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 4) {
+            SpeechBubble(text: "Give me something to pick!")
+            BouncingMascot(size: 120)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
+        .padding(.top, 12)
     }
 
     private var addTaskRow: some View {
@@ -224,5 +218,36 @@ private struct TaskRow: View {
                 }
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// A small rounded bubble with a tail pointing down at the mascot.
+private struct SpeechBubble: View {
+    let text: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(Color.dunnoOnAccent)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.dunnoAccent, in: Capsule())
+
+            Triangle()
+                .fill(Color.dunnoAccent)
+                .frame(width: 16, height: 9)
+        }
+    }
+
+    private struct Triangle: Shape {
+        func path(in rect: CGRect) -> Path {
+            Path { path in
+                path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+                path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+                path.closeSubpath()
+            }
+        }
     }
 }

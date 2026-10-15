@@ -7,19 +7,14 @@ struct WelcomeView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            MascotView(size: 176)
+            BouncingMascot(size: 230)
 
-            Text("Can't decide?\nDunno will.")
-                .font(.dunnoDisplay(40))
+            // Only the app name is bold; the rest of the line stays regular.
+            Text("Don't know where to start?\n\(Text("Dunno").fontWeight(.heavy)) knows!")
+                .font(.system(size: 30, weight: .regular, design: .rounded))
                 .multilineTextAlignment(.center)
                 .padding(.top, 40)
-
-            Text("List up to 8 things you could do. Dunno picks one, and you stick with it until it's done.")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.top, 16)
-                .padding(.horizontal, 32)
+                .padding(.horizontal, 24)
 
             Spacer()
 
@@ -36,3 +31,4 @@ struct WelcomeView: View {
         .background(Color.dunnoBase.ignoresSafeArea())
     }
 }
+

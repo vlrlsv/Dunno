@@ -57,9 +57,12 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 
 Defined in `Dunno/Views/Theme.swift`, with colors as light/dark color sets in `Assets.xcassets`. The app follows the system light/dark setting.
 
-- **60/30/10 palette:** `Color.dunnoBase` (60% — screen backgrounds), `Color.dunnoSurface` (30% — cards, rows, fields), `Color.dunnoAccent` (10% — primary actions, highlights). `dunnoAccent` is the `AccentColor` asset: black in light mode, warm white in dark mode (black would vanish on the dark base). Put text/icons on the accent with `Color.dunnoOnAccent`.
-- **Mascot:** the brand mascot is black in both modes and always sits on the light `dunnoMascotStage` disc via `MascotView`. It renders the `Mascot` image asset when present, otherwise a drawn placeholder.
+- **60/30/10 palette:** `Color.dunnoBase` (60% — screen backgrounds: light cream-yellow / near-black eggplant), `Color.dunnoSurface` (30% — cards, rows, fields, tab bar), `Color.dunnoAccent` (10% — primary actions, highlights). `dunnoAccent` is the `AccentColor` asset: black in light mode, light yellow in dark mode (black would vanish on the dark base). Put text/icons on the accent with `Color.dunnoOnAccent`.
+- **Mascot:** the brand mascot (`Mascot` image asset, a flat no-fur version of the original artwork) is black in both modes. `BouncingMascot(size:)` is the free-standing animated version used on the welcome screen and the empty task list; `MascotView` draws it statically, optionally on the `dunnoMascotStage` disc.
+- **Navigation chrome:** `MainTabView` uses a custom floating `DunnoTabBar` (accent pill on the selected tab) stacked below the content instead of the system tab bar.
 - **Components:** one `PrimaryButtonStyle` (accent capsule) per screen; `SecondaryButtonStyle` for the alternative choice. Headlines and task titles use `Font.dunnoDisplay(_:)` (SF Rounded, bold). Lists hide their default background (`.scrollContentBackground(.hidden)`) and use `dunnoSurface` row backgrounds.
+
+**Design review helpers (Debug only):** `ScreenPreviews.swift` has Xcode previews for every screen with sample data. Launching with `-DunnoSampleTasks N` replaces the open tasks with N sample tasks.
 
 ## Key Conventions
 

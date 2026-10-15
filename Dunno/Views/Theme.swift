@@ -58,16 +58,21 @@ struct SecondaryButtonStyle: ButtonStyle {
 /// added to the catalog; until then it draws a simple placeholder character.
 struct MascotView: View {
     var size: CGFloat = 120
+    /// The solid disc behind the mascot. Turn it off for a free-standing
+    /// (e.g. animated) mascot.
+    var showsStage = true
 
     var body: some View {
         ZStack {
-            Circle().fill(Color.dunnoMascotStage)
+            if showsStage {
+                Circle().fill(Color.dunnoMascotStage)
+            }
 
             if UIImage(named: "Mascot") != nil {
                 Image("Mascot")
                     .resizable()
                     .scaledToFit()
-                    .padding(size * 0.14)
+                    .padding(size * 0.04)
             } else {
                 placeholder
             }
@@ -94,5 +99,40 @@ struct MascotView: View {
         Capsule()
             .fill(Color.white)
             .frame(width: size * 0.07, height: size * 0.1)
+    }
+}
+
+/// The mascot's idle loop: a small hop with squash and stretch, and a ground
+/// shadow that shrinks while it's in the air. Everything scales with `size`.
+struct BouncingMascot: View {
+    var size: CGFloat = 230
+
+    private enum Phase: CaseIterable {
+        case land, rest, crouch, jump
+    }
+
+    var body: some View {
+        PhaseAnimator(Phase.allCases) { phase in
+            ZStack(alignment: .bottom) {
+                // The feet sit ~86% down the artwork, so the shadow is lifted to meet them.
+                Ellipse()
+                    .fill(Color.primary.opacity(phase == .jump ? 0.07 : 0.14))
+                    .frame(width: phase == .jump ? size * 0.38 : size * 0.55, height: size * 0.06)
+                    .offset(y: -size * 0.12)
+
+                MascotView(size: size, showsStage: false)
+                    .scaleEffect(x: phase == .crouch ? 1.06 : (phase == .jump ? 0.96 : 1),
+                                 y: phase == .crouch ? 0.92 : (phase == .jump ? 1.05 : 1),
+                                 anchor: .bottom)
+                    .offset(y: phase == .jump ? -size * 0.11 : 0)
+            }
+        } animation: { phase in
+            switch phase {
+            case .land: .easeIn(duration: 0.28)       // fall back down
+            case .rest: .linear(duration: 1.1)        // pause between hops
+            case .crouch: .easeOut(duration: 0.16)    // squash before jumping
+            case .jump: .easeOut(duration: 0.32)      // stretch and rise
+            }
+        }
     }
 }

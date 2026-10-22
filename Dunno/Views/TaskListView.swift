@@ -126,7 +126,6 @@ struct TaskListView: View {
         } catch {
             // Keep the typed title for retry and report the failed write.
             saveErrorMessage = error.localizedDescription
-            print("Failed to save new task: \(error)")
         }
     }
 

@@ -1,1 +1,4 @@
 .codex/local-notes.md
+.DS_Store
+xcuserdata/
+*.xcuserstate

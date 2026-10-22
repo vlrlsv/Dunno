@@ -74,7 +74,7 @@ struct ActiveTaskView: View {
 
     private func completeTask() {
         do {
-            try TaskStore.complete(task, in: modelContext)
+            try TaskStore.complete(task, startedAt: appState.activeTaskStartDate, in: modelContext)
             withAnimation { appState.clearActiveTask() }
         } catch {
             saveErrorMessage = error.localizedDescription

@@ -15,7 +15,7 @@ struct DunnoTests {
     ) throws {
         switch mutation {
         case .title: try TaskStore.updateTitle(task, to: "Changed", in: context, save: save)
-        case .completion: try TaskStore.complete(task, in: context, save: save)
+        case .completion: try TaskStore.complete(task, startedAt: .now, in: context, save: save)
         case .reorder: try TaskStore.reorder([task], in: context, save: save)
         case .deletion: try TaskStore.delete([task], from: context, save: save)
         }
@@ -46,6 +46,8 @@ struct DunnoTests {
         let restored = try #require(saved.first { $0.id == task.id })
         #expect(restored.title == "Original")
         #expect(!restored.isCompleted)
+        #expect(restored.completionDate == nil)
+        #expect(restored.completionDuration == nil)
         #expect(restored.sortOrder == 5)
         #expect(saved.first { $0.id == other.id }?.title == "Pending edit")
     }
@@ -67,8 +69,27 @@ struct DunnoTests {
             let restored = try #require(saved.first)
             #expect(restored.title == (mutation == .title ? "Changed" : "Original"))
             #expect(restored.isCompleted == (mutation == .completion))
+            #expect((restored.completionDate != nil) == (mutation == .completion))
             #expect(restored.sortOrder == (mutation == .reorder ? 0 : 5))
         }
+    }
+
+    @Test func completionRecordsDateAndFinalSessionDuration() throws {
+        let container = try ModelContainer(for: TaskItem.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let context = ModelContext(container)
+        let start = Date(timeIntervalSinceReferenceDate: 1_000)
+        let timed = TaskItem(title: "Timed")
+        let untimed = TaskItem(title: "Untimed")
+        for item in [timed, untimed] { context.insert(item) }
+
+        try TaskStore.complete(timed, startedAt: start, at: start + 90, in: context)
+        try TaskStore.complete(untimed, startedAt: nil, at: start + 90, in: context)
+
+        #expect(timed.completionDate == start + 90)
+        #expect(timed.completionDuration == 90)
+        #expect(untimed.completionDate == start + 90)
+        #expect(untimed.completionDuration == nil)
     }
 
     @Test func failedAdditionPreservesOtherPendingChanges() throws {

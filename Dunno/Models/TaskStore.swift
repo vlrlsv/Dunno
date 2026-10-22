@@ -1,3 +1,4 @@
+import Foundation
 import SwiftData
 
 @MainActor
@@ -15,15 +16,19 @@ enum TaskStore {
         }
     }
 
+    /// Records the completion time and how long the final session took, measured
+    /// from `start` (nil if the start time is unknown).
     static func complete(
-        _ task: TaskItem, in context: ModelContext,
+        _ task: TaskItem, startedAt start: Date?, at date: Date = .now, in context: ModelContext,
         save: (ModelContext) throws -> Void = { try $0.save() }
     ) throws {
-        let previous = task.isCompleted
+        let previous = (task.isCompleted, task.completionDate, task.completionDuration)
         task.isCompleted = true
+        task.completionDate = date
+        task.completionDuration = start.map { max(0, date.timeIntervalSince($0)) }
         do { try save(context) }
         catch {
-            task.isCompleted = previous
+            (task.isCompleted, task.completionDate, task.completionDuration) = previous
             throw error
         }
     }

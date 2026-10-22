@@ -5,8 +5,8 @@ import SwiftData
 /// schema version only needs to repoint it.
 typealias TaskItem = SchemaV1.TaskItem
 
-/// The original model. It must stay field-for-field identical so stores
-/// created before versioning are recognized as V1.
+/// The first released model. Until the app first ships it can change in place;
+/// after that it must stay frozen, and changes go in a new schema version.
 enum SchemaV1: VersionedSchema {
     static let versionIdentifier = Schema.Version(1, 0, 0)
     static var models: [any PersistentModel.Type] { [TaskItem.self] }
@@ -18,6 +18,10 @@ enum SchemaV1: VersionedSchema {
         var isCompleted: Bool
         var creationDate: Date
         var sortOrder: Int
+        /// When the task was marked done; nil while it's open.
+        var completionDate: Date?
+        /// Seconds from the last start to Done (the final session only).
+        var completionDuration: TimeInterval?
 
         init(title: String, sortOrder: Int = 0) {
             self.id = UUID()

@@ -4,7 +4,7 @@ import SwiftData
 @main
 struct DunnoApp: App {
     @State private var appState: AppState
-    private let container: ModelContainer
+    @State private var store: PersistentStore
 
     init() {
         // UI tests get isolated stores that survive relaunch within one test.
@@ -14,24 +14,26 @@ struct DunnoApp: App {
             let name = "DunnoUITests.\(testID.uuidString)"
             let defaults = UserDefaults(suiteName: name)!
             _appState = State(initialValue: AppState(defaults: defaults))
-            container = try! ModelContainer(
-                for: TaskItem.self,
-                configurations: ModelConfiguration(
-                    url: URL.temporaryDirectory.appendingPathComponent("\(name).store")
-                )
-            )
+            _store = State(initialValue: PersistentStore(
+                url: URL.temporaryDirectory.appendingPathComponent("\(name).store")
+            ))
             return
         }
         #endif
         _appState = State(initialValue: AppState())
-        container = try! ModelContainer(for: TaskItem.self)
+        _store = State(initialValue: PersistentStore())
     }
 
     var body: some Scene {
         WindowGroup {
-            RootContentView()
-                .environment(appState)
+            switch store.result {
+            case .success(let container):
+                RootContentView()
+                    .environment(appState)
+                    .modelContainer(container)
+            case .failure:
+                StoreErrorView(retry: store.retry, reset: store.reset)
+            }
         }
-        .modelContainer(container)
     }
 }

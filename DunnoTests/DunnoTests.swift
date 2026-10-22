@@ -126,6 +126,49 @@ struct DunnoTests {
         #expect(saved.first?.sortOrder == 4)
     }
 
+    private func withStoreURL(_ test: (URL) throws -> Void) throws {
+        let directory = URL.temporaryDirectory.appendingPathComponent("DunnoTests.\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try test(directory.appendingPathComponent("test.store"))
+    }
+
+    @Test func storeCreatedBeforeVersioningOpensAsV1() throws {
+        try withStoreURL { url in
+            // How the app opened its store before schema versioning.
+            do {
+                let legacy = try ModelContainer(for: TaskItem.self, configurations: ModelConfiguration(url: url))
+                let context = ModelContext(legacy)
+                context.insert(TaskItem(title: "Kept", sortOrder: 2))
+                try context.save()
+            }
+            let container = try PersistentStore(url: url).result.get()
+            let saved = try ModelContext(container).fetch(FetchDescriptor<TaskItem>())
+            #expect(saved.map(\.title) == ["Kept"])
+            #expect(saved.first?.sortOrder == 2)
+        }
+    }
+
+    @Test func unreadableStoreFailsWithoutCrashingAndResetKeepsABackup() throws {
+        try withStoreURL { url in
+            let garbage = Data("not a database".utf8)
+            try garbage.write(to: url)
+            let store = PersistentStore(url: url)
+            #expect(throws: (any Error).self) { try store.result.get() }
+            store.retry()
+            #expect(throws: (any Error).self) { try store.result.get() }
+
+            store.reset()
+            let container = try store.result.get()
+            #expect(try ModelContext(container).fetchCount(FetchDescriptor<TaskItem>()) == 0)
+            let backups = try FileManager.default
+                .contentsOfDirectory(at: url.deletingLastPathComponent(), includingPropertiesForKeys: nil)
+                .filter { $0.lastPathComponent.hasPrefix("test.store.corrupt-") }
+            #expect(backups.count == 1)
+            #expect(try Data(contentsOf: try #require(backups.first)) == garbage)
+        }
+    }
+
     private func withDefaults(_ test: (UserDefaults) throws -> Void) rethrows {
         let name = "DunnoTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

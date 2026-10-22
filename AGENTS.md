@@ -34,7 +34,8 @@ Unit tests inject isolated `UserDefaults` suites and use an in-memory SwiftData 
 **State management:** Two layers — `AppState` (transient UI state, persisted to `UserDefaults`) and SwiftData (task persistence via `@Model`).
 
 - `AppState` (`@Observable`) tracks `hasSeenTutorial`, `activeTaskId`, and `activeTaskStartDate` (drives the elapsed timer on `ActiveTaskView`; set by `setActiveTask(_:)`, cleared by `clearActiveTask()`). All are written to `UserDefaults` on `didSet` so they survive app restarts. It also holds a transient `isRandomizing` flag that drives the randomizer cover — this one is deliberately *not* persisted.
-- `TaskItem` is the sole SwiftData model. The `modelContainer` is attached at the app root and accessed via `@Environment(\.modelContext)` in views.
+- `TaskItem` is the sole SwiftData model. It is a typealias for `SchemaV1.TaskItem`; models live inside `VersionedSchema` enums, and `DunnoMigrationPlan` lists every version. To change the model, add a `SchemaV2` with its own copy of the class, repoint the typealias, and add a migration stage. Never edit `SchemaV1`'s fields: existing stores must keep matching it.
+- `PersistentStore` opens the container without crashing. On failure, `DunnoApp` shows `StoreErrorView` with Retry (temporary problems such as a full disk) and Reset (moves the store files aside as `*.corrupt-<timestamp>`, never deletes them, and opens an empty store). Views access the container via `@Environment(\.modelContext)`.
 
 **Navigation is state-driven, not route-driven.** `RootContentView` is the single gatekeeper that reads `AppState` and `@Query` to decide which top-level view to show:
 1. `WelcomeView` — first launch only (`!hasSeenTutorial`)
@@ -64,5 +65,5 @@ Defined in `Dunno/Views/Theme.swift`, with colors as light/dark color sets in `A
 ## Key Conventions
 
 - Views inject `AppState` via `@Environment(AppState.self)` — it must be passed with `.environment(appState)` from the root.
-- The app creates one `ModelContainer` for `TaskItem` and attaches it at the `WindowGroup` level; views must use that container.
+- The app creates one `ModelContainer` through `PersistentStore` and attaches it to `RootContentView`; views must use that container.
 - Unit tests use Swift Testing (`@Test`, `#expect`); UI tests use XCTest.
